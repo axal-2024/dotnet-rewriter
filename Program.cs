@@ -157,7 +157,33 @@ namespace MethodInjector
 
         public override SyntaxNode VisitConstructorDeclaration(ConstructorDeclarationSyntax node)
         {
-            // Simply return the base visit without injecting any logging code
+            string methodName = node.Identifier.Text;
+            methodNameStack.Push(methodName);
+
+            BlockSyntax newBody = null;
+
+            if (node.Body != null)
+            {
+                // For constructors with a block body.
+                newBody = ProcessBlock(node.Body, methodName);
+            }
+            else if (node.ExpressionBody != null)
+            {
+                // For expression-bodied constructors, convert them to a block body.
+                newBody = ConvertExpressionBodyToBlock(node.ExpressionBody, methodName, SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.VoidKeyword)));
+            }
+
+            methodNameStack.Pop();
+
+            if (newBody != null)
+            {
+                // Replace the original body with our new body.
+                var newNode = node.WithBody(newBody)
+                                 .WithExpressionBody(null)
+                                 .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.None));
+                return base.VisitConstructorDeclaration(newNode);
+            }
+
             return base.VisitConstructorDeclaration(node);
         }
 
