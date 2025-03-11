@@ -11,18 +11,47 @@ namespace MethodInjector
 {
     class Program
     {
-        static void Main(string[] args)
+        static int Main(string[] args)
         {
-            if (args.Length < 2)
+            if (args.Length != 1)
             {
-                Console.WriteLine("Usage: MethodInjector <inputFile.cs> <outputFile.cs>");
-                return;
+                Console.WriteLine("Usage: dotnet run -- <directory_path>");
+                return 1;
             }
 
-            string inputFile = args[0];
-            string outputFile = args[1];
+            string directoryPath = args[0];
 
-            string code = File.ReadAllText(inputFile);
+            if (!Directory.Exists(directoryPath))
+            {
+                Console.WriteLine($"Directory not found: {directoryPath}");
+                return 1;
+            }
+
+            // Find all .cs files in the directory
+            string[] csFiles = Directory.GetFiles(directoryPath, "*.cs", SearchOption.AllFiles);
+
+            if (csFiles.Length == 0)
+            {
+                Console.WriteLine($"No .cs files found in {directoryPath}");
+                return 1;
+            }
+
+            Console.WriteLine($"Found {csFiles.Length} .cs files to process");
+
+            foreach (string filePath in csFiles)
+            {
+                Console.WriteLine($"Processing: {filePath}");
+                // Call the processing method for each file
+                ProcessCsFile(filePath);
+            }
+
+            return 0;
+        }
+
+        // Create a method to process individual files
+        static void ProcessCsFile(string filePath)
+        {
+            string code = File.ReadAllText(filePath);
             SyntaxTree tree = CSharpSyntaxTree.ParseText(code);
             SyntaxNode root = tree.GetRoot();
 
@@ -54,8 +83,8 @@ namespace MethodInjector
                 newRoot = Formatter.Format(newRoot, workspace);
             }
 
-            File.WriteAllText(outputFile, newRoot.ToFullString());
-            Console.WriteLine($"Modified file written to: {outputFile}");
+            File.WriteAllText(filePath, newRoot.ToFullString());
+            Console.WriteLine($"Modified file written to: {filePath}");
         }
     }
 
