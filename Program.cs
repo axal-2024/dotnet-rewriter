@@ -28,7 +28,7 @@ namespace MethodInjector
             }
 
             // Find all .cs files in the directory
-            string[] csFiles = Directory.GetFiles(directoryPath, "*.cs", SearchOption.AllFiles);
+            string[] csFiles = Directory.GetFiles(directoryPath, "*.cs", SearchOption.AllDirectories);
 
             if (csFiles.Length == 0)
             {
