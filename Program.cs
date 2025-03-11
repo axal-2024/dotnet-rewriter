@@ -168,8 +168,8 @@ namespace MethodInjector
         private BlockSyntax ProcessBlock(BlockSyntax block, string methodName)
         {
             // Create the entry and exit log statements using string interpolation
-            var entryLog = CreateLogStatement($"AXAL_ENTER {{GetFullClassPath()}} {{methodName}} [{{Environment.CurrentManagedThreadId}}] {{DateTime.UtcNow:yyyy-MM-ddTHH:mm:ss.fffffff}}Z", true);
-            var exitLog = CreateLogStatement($"AXAL_EXIT {{GetFullClassPath()}} {{methodName}} [{{Environment.CurrentManagedThreadId}}] {{DateTime.UtcNow:yyyy-MM-ddTHH:mm:ss.fffffff}}Z", false);
+            var entryLog = CreateLogStatement($"AXAL_ENTER {GetFullClassPath()} {methodName} [{{Environment.CurrentManagedThreadId}}] {{DateTime.UtcNow:yyyy-MM-ddTHH:mm:ss.fffffff}}Z", true);
+            var exitLog = CreateLogStatement($"AXAL_EXIT {GetFullClassPath()} {methodName} [{{Environment.CurrentManagedThreadId}}] {{DateTime.UtcNow:yyyy-MM-ddTHH:mm:ss.fffffff}}Z", false);
 
             // First, rewrite return statements to include the exit log.
             var processedBlock = (BlockSyntax)new ReturnInjector(methodName, GetFullClassPath()).Visit(block);
@@ -201,8 +201,8 @@ namespace MethodInjector
         /// </summary>
         private BlockSyntax ConvertExpressionBodyToBlock(ArrowExpressionClauseSyntax expressionBody, string methodName, TypeSyntax returnType)
         {
-            var entryLog = CreateLogStatement($"AXAL_ENTER {{GetFullClassPath()}} {{methodName}} [{{Environment.CurrentManagedThreadId}}] {{DateTime.UtcNow:yyyy-MM-ddTHH:mm:ss.fffffff}}Z", true);
-            var exitLog = CreateLogStatement($"AXAL_EXIT {{GetFullClassPath()}} {{methodName}} [{{Environment.CurrentManagedThreadId}}] {{DateTime.UtcNow:yyyy-MM-ddTHH:mm:ss.fffffff}}Z", false);
+            var entryLog = CreateLogStatement($"AXAL_ENTER {GetFullClassPath()} {methodName} [{{Environment.CurrentManagedThreadId}}] {{DateTime.UtcNow:yyyy-MM-ddTHH:mm:ss.fffffff}}Z", true);
+            var exitLog = CreateLogStatement($"AXAL_EXIT {GetFullClassPath()} {methodName} [{{Environment.CurrentManagedThreadId}}] {{DateTime.UtcNow:yyyy-MM-ddTHH:mm:ss.fffffff}}Z", false);
 
             // Determine if the method is void.
             bool isVoid = returnType.ToString().Equals("void", StringComparison.OrdinalIgnoreCase);
