@@ -2,13 +2,35 @@ import argparse
 import json
 import os
 import tiktoken
-import openai
+from openai import OpenAI
+from dotenv import load_dotenv
+
+load_dotenv()
+client = OpenAI()
 
 def summarize_with_ai(text):
-    return text[0:100] + "..."
+    prompt = """
+Analyze the following code and identify the core business functionalities and important application flows.
+Think very deeply and make sure to tie back each functionality or flow to the purpose it was written with.
+Make sure that your analysis covers every single aspect and functionality of the given code in as much detail as possible.
+
+CODE TO ANALYZE:    
+"""
+    
+    response = client.chat.completions.create(
+        model="o3-mini",
+        messages=[
+            {"role": "system", "content": "You are an expert software architect with deep understanding of C# applications."},
+            {"role": "user", "content": prompt + text}
+        ],
+        temperature=0.2,
+        max_tokens=120000
+    )
+    
+    return response.choices[0].message.content
 
 def count_tokens(text):
-    encoding = tiktoken.encoding_for_model("o3-mini")
+    encoding = tiktoken.encoding_for_model("gpt-4o")
     return len(encoding.encode(text))
 
 if __name__ == "__main__":
@@ -23,7 +45,7 @@ if __name__ == "__main__":
     
     buffer = ""
     token_count = 0
-    MAX_TOKENS = 150000
+    MAX_TOKENS = 100000
     
     for class_name, file_path in class_mapping.items():
         try:
@@ -46,7 +68,7 @@ if __name__ == "__main__":
             token_count += file_tokens
             
         except Exception as e:
-            pass
+            print(f"Error processing {file_path}: {str(e)}")
     
     # Summarize any remaining content in the buffer
     if token_count > 0:
