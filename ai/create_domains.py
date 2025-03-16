@@ -13,12 +13,16 @@ def summarize_with_ai(text):
 
 CODE TO ANALYZE:    
 """
+    end_instructions = """
+
+IMPORTANT INSTRUCTIONS:
+Ensure that the output is a bulleted list of the functionalities and flows described in extreme detail, and nothing else. No titles or additional text."""
     
     response = client.chat.completions.create(
         model="o3-mini",
         messages=[
             {"role": "system", "content": "You are an expert software architect with a deep understanding of C# applications."},
-            {"role": "user", "content": prompt + text}
+            {"role": "user", "content": prompt + text + end_instructions}
         ],
         max_completion_tokens=10000
     )
