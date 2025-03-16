@@ -1,6 +1,5 @@
 import argparse
 import json
-import os
 import tiktoken
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -24,7 +23,7 @@ Ensure that the output is a bulleted list of the functionalities and flows descr
             {"role": "system", "content": "You are an expert software architect with a deep understanding of C# applications."},
             {"role": "user", "content": prompt + text + end_instructions}
         ],
-        max_completion_tokens=10000
+        max_completion_tokens=5000
     )
     
     return response.choices[0].message.content
@@ -45,7 +44,7 @@ if __name__ == "__main__":
     
     buffer = ""
     token_count = 0
-    MAX_TOKENS = 180000
+    MAX_TOKENS = 190000
     
     for class_name, file_path in class_mapping.items():
         try:
