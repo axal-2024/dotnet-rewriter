@@ -33,7 +33,6 @@ if __name__ == "__main__":
             file_tokens = count_tokens(file_content)
             
             if token_count + file_tokens > MAX_TOKENS and token_count > 0:
-                print(f"Summarizing buffer with {token_count} tokens...")
                 summary = summarize_with_ai(buffer)
                 print("\nSUMMARY:\n")
                 print(summary)
@@ -46,14 +45,11 @@ if __name__ == "__main__":
             buffer += file_content
             token_count += file_tokens
             
-            print(f"Added {class_name} from {file_path} ({file_tokens} tokens)")
-            
         except Exception as e:
-            print(f"Error processing {file_path}: {e}")
+            pass
     
     # Summarize any remaining content in the buffer
     if token_count > 0:
-        print(f"Summarizing remaining buffer with {token_count} tokens...")
         summary = summarize_with_ai(buffer)
         print("\nSUMMARY:\n")
         print(summary)
