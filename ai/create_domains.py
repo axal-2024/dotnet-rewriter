@@ -23,8 +23,7 @@ CODE TO ANALYZE:
             {"role": "system", "content": "You are an expert software architect with deep understanding of C# applications."},
             {"role": "user", "content": prompt + text}
         ],
-        temperature=0.2,
-        max_tokens=120000
+        max_completion_tokens=120000
     )
     
     return response.choices[0].message.content
