@@ -28,6 +28,45 @@ Ensure that the output is a bulleted list of the functionalities and flows descr
     
     return response.choices[0].message.content
 
+def generate_business_domains(summaries):
+    prompt = """Based on all the functionalities and application flows below, identify business domains according to Domain-Driven Design principles.
+
+SUMMARIES OF FUNCTIONALITIES:
+"""
+    
+    for i, summary in enumerate(summaries):
+        prompt += f"\n--- SUMMARY {i+1} ---\n{summary}\n"
+    
+    prompt += """
+INSTRUCTIONS:
+1. Identify specific business domains that should be independent of each other according to Domain-Driven Design principles.
+2. Create a single 'common' domain for functionality that is shared across domains.
+3. Do NOT create any other utility, application, or common domains - only specific domains and a single common domain.
+4. For each domain, provide a detailed description of what functionality it includes.
+5. Format your response as a valid JSON object with the following structure:
+   {
+     "domains": [
+       {
+         "name": "DomainName",
+         "description": "Detailed description of domain responsibilities and functionality"
+       },
+       ...
+     ]
+   }
+6. Ensure one domain has the name "Common" containing all shared functionality.
+"""
+    
+    response = client.chat.completions.create(
+        model="o3-mini-high",
+        messages=[
+            {"role": "system", "content": "You are an expert in Domain-Driven Design who can identify bounded contexts and business domains from application functionality descriptions."},
+            {"role": "user", "content": prompt}
+        ],
+        max_completion_tokens=4000
+    )
+    
+    return response.choices[0].message.content
+
 def count_tokens(text):
     encoding = tiktoken.encoding_for_model("gpt-4o")
     return len(encoding.encode(text))
@@ -35,6 +74,7 @@ def count_tokens(text):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process class mapping file and summarize code.")
     parser.add_argument("class_mapping_file", help="Path to the class mapping JSON file")
+    
     args = parser.parse_args()
     
     class_mapping_file = args.class_mapping_file
@@ -45,6 +85,8 @@ if __name__ == "__main__":
     buffer = ""
     token_count = 0
     MAX_TOKENS = 190000
+    summaries = []
+    summary_count = 0
     
     for class_name, file_path in class_mapping.items():
         try:
@@ -55,9 +97,9 @@ if __name__ == "__main__":
             
             if token_count + file_tokens > MAX_TOKENS and token_count > 0:
                 summary = summarize_with_ai(buffer)
-                print("\nSUMMARY:\n")
-                print(summary)
-                print("\n" + "="*80 + "\n")
+                summaries.append(summary)
+                summary_count += 1
+                print(f"no. of summaries done = {summary_count}")
                 
                 buffer = ""
                 token_count = 0
@@ -71,5 +113,12 @@ if __name__ == "__main__":
     
     if token_count > 0:
         summary = summarize_with_ai(buffer)
-        print("\nSUMMARY:\n")
-        print(summary)
+        summaries.append(summary)
+        summary_count += 1
+        print(f"no. of summaries done = {summary_count}")
+    
+    # Generate business domains from all summaries
+    if summaries:
+        business_domains_json = generate_business_domains(summaries)
+        print("\nBUSINESS DOMAINS:\n")
+        print(business_domains_json)
