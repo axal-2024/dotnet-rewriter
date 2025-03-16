@@ -23,7 +23,7 @@ CODE TO ANALYZE:
             {"role": "system", "content": "You are an expert software architect with deep understanding of C# applications."},
             {"role": "user", "content": prompt + text}
         ],
-        max_completion_tokens=120000
+        max_completion_tokens=10000
     )
     
     return response.choices[0].message.content
@@ -44,7 +44,7 @@ if __name__ == "__main__":
     
     buffer = ""
     token_count = 0
-    MAX_TOKENS = 100000
+    MAX_TOKENS = 180000
     
     for class_name, file_path in class_mapping.items():
         try:
