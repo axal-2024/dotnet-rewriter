@@ -256,7 +256,7 @@ INSTRUCTIONS:
                     {"role": "system", "content": "You are a domain-driven design expert that can accurately classify code into business domains based on its functionality."},
                     {"role": "user", "content": prompt}
                 ],
-                max_tokens=100  # Short response needed
+                max_completion_tokens=100  # Short response needed
             )
             
             domain = response.choices[0].message.content.strip().lower()
