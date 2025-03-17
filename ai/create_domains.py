@@ -26,13 +26,15 @@ INSTRUCTIONS:
    {
      "domains": [
        {
-         "name": "DomainName",
+         "name": "domain_name",
          "description": "Detailed description of domain responsibilities and functionality"
        },
        ...
      ]
    }
-6. Ensure one domain has the name "Common" containing all shared functionality.
+6. Ensure one domain has the exact name "common" (lowercase) containing all shared functionality.
+7. Use only lowercase single words for domain names (e.g., "user", "payment", "inventory"). If absolutely required, it can have a maximum of 2 words separated by an underscore.
+8. Be extremely specific about what functionality belongs in each domain.
 """
     
     # Truncate content if it exceeds max length
