@@ -88,6 +88,18 @@ namespace ClassMapper
                         // Add to mapping with normalized file path
                         mapping[fullClassName] = Path.GetFullPath(filePath);
                     }
+                    
+                    // Get all interfaces in this namespace
+                    var interfaceDeclarations = namespaceDeclaration.DescendantNodes().OfType<InterfaceDeclarationSyntax>();
+                    
+                    foreach (var interfaceDeclaration in interfaceDeclarations)
+                    {
+                        string interfaceName = interfaceDeclaration.Identifier.Text;
+                        string fullInterfaceName = $"{namespaceName}.{interfaceName}";
+                        
+                        // Add to mapping with normalized file path
+                        mapping[fullInterfaceName] = Path.GetFullPath(filePath);
+                    }
                 }
                 
                 // Also handle top-level classes (outside of any namespace)
@@ -100,6 +112,18 @@ namespace ClassMapper
                     string className = classDeclaration.Identifier.Text;
                     // Top-level classes have no namespace
                     mapping[className] = Path.GetFullPath(filePath);
+                }
+                
+                // Handle top-level interfaces (outside of any namespace)
+                var topLevelInterfaces = root.DescendantNodes()
+                    .OfType<InterfaceDeclarationSyntax>()
+                    .Where(i => i.Parent is CompilationUnitSyntax);
+                
+                foreach (var interfaceDeclaration in topLevelInterfaces)
+                {
+                    string interfaceName = interfaceDeclaration.Identifier.Text;
+                    // Top-level interfaces have no namespace
+                    mapping[interfaceName] = Path.GetFullPath(filePath);
                 }
                 
                 // Handle file-scoped namespace declarations (C# 10+)
@@ -118,6 +142,18 @@ namespace ClassMapper
                         
                         // Add to mapping with normalized file path
                         mapping[fullClassName] = Path.GetFullPath(filePath);
+                    }
+                    
+                    // Get all interfaces in this namespace
+                    var interfaceDeclarations = fileScopedNamespace.DescendantNodes().OfType<InterfaceDeclarationSyntax>();
+                    
+                    foreach (var interfaceDeclaration in interfaceDeclarations)
+                    {
+                        string interfaceName = interfaceDeclaration.Identifier.Text;
+                        string fullInterfaceName = $"{namespaceName}.{interfaceName}";
+                        
+                        // Add to mapping with normalized file path
+                        mapping[fullInterfaceName] = Path.GetFullPath(filePath);
                     }
                 }
             }

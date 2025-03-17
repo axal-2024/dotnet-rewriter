@@ -11,9 +11,9 @@ load_dotenv()
 client = OpenAI()
 
 def generate_business_domains(summaries):
-    prompt = """Based on all the functionalities and application flows below, identify business domains according to Domain-Driven Design principles.
+    prompt = """Analyze the following code functionality summaries and identify logical, independent modules in this codebase.
 
-SUMMARIES OF FUNCTIONALITIES:
+CODE FUNCTIONALITY SUMMARIES:
 """
     
     for i, summary in enumerate(summaries):
@@ -21,23 +21,21 @@ SUMMARIES OF FUNCTIONALITIES:
     
     prompt += """
 INSTRUCTIONS:
-1. Identify specific business domains that should be independent of each other according to Domain-Driven Design principles.
-2. Create a single 'common' domain for functionality that is shared across domains.
-3. Do NOT create any other utility, application, or common domains - only specific domains and a single common domain.
-4. For each domain, provide a detailed description of what functionality it includes.
-5. Format your response as a valid JSON object with the following structure:
+1. Identify distinct, independent modules that represent logical partitions of the codebase.
+2. Create a single 'common' module for shared functionality used across multiple modules.
+3. For each module, provide a concise description of its core responsibilities.
+4. Format your response as a valid JSON object with the following structure:
    {
      "domains": [
        {
-         "name": "domain_name",
-         "description": "Detailed description of domain responsibilities and functionality"
+         "name": "module_name",
+         "description": "Concise description of core responsibilities"
        },
        ...
      ]
    }
-6. Ensure one domain has the exact name "common" (lowercase) containing all shared functionality.
-7. Use only lowercase single words for domain names (e.g., "user", "payment", "inventory"). If absolutely required, it can have a maximum of 2 words separated by an underscore.
-8. Be extremely specific about what functionality belongs in each domain.
+5. Use only lowercase single words for module names. Ex. 'authentication', 'reporting', 'analytics' etc. If necessary, use a maximum of 2 words with underscore separator.
+6. Be extremely specific and concise about each module's boundaries and responsibilities.
 """
     
     # Truncate content if it exceeds max length
@@ -47,7 +45,7 @@ INSTRUCTIONS:
     response = client.chat.completions.create(
         model="o3-mini",
         messages=[
-            {"role": "system", "content": "You are an expert in Domain-Driven Design who can identify bounded contexts and business domains from application functionality descriptions."},
+            {"role": "system", "content": "You are an expert in software architecture who can identify logical modules and boundaries in any codebase."},
             {"role": "user", "content": prompt}
         ],
         max_completion_tokens=4000
