@@ -3,6 +3,9 @@ import json
 import tiktoken
 from openai import OpenAI
 from dotenv import load_dotenv
+import threading
+import concurrent.futures
+from tqdm import tqdm  # For a nice progress bar
 
 load_dotenv()
 client = OpenAI()
@@ -221,12 +224,18 @@ def fourth_part(class_mapping_file):
     for name, description in domain_descriptions.items():
         domains_text += f"- {name}: {description}\n"
     
-    # Create mapping between classes and domains
+    # Create mapping between classes and domains with thread safety
     class_domain_mapping = {}
+    mapping_lock = threading.Lock()
+    save_lock = threading.Lock()
+    progress_counter = {"processed": 0}
+    counter_lock = threading.Lock()
+    
     total_classes = len(class_mapping)
     
-    for i, (class_name, file_path) in enumerate(class_mapping.items()):
-        print(f"Processing class {i+1}/{total_classes}: {class_name}")
+    # Worker function for threaded processing
+    def process_class(item):
+        class_name, file_path = item
         
         try:
             with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
@@ -258,8 +267,6 @@ INSTRUCTIONS:
                     {"role": "user", "content": prompt}
                 ]
             )
-
-            print(response.choices[0])
             
             domain = response.choices[0].message.content.strip().lower()
             
@@ -268,20 +275,54 @@ INSTRUCTIONS:
                 print(f"Warning: AI returned invalid domain '{domain}' for {class_name}. Defaulting to 'common'.")
                 domain = "common"
             
-            # Add to mapping - use class_name instead of file_path as the key
-            class_domain_mapping[class_name] = domain
-            print(f"Classified {class_name} as '{domain}'")
+            # Thread-safe update to the mapping
+            with mapping_lock:
+                class_domain_mapping[class_name] = domain
             
-            # Save progress periodically
-            if (i + 1) % 10 == 0:
-                with open("class_domain_mapping.json", "w", encoding="utf-8") as f:
-                    json.dump(class_domain_mapping, f, ensure_ascii=False, indent=2)
-                print(f"Progress saved ({i+1}/{total_classes})")
+            # Update counter and save progress periodically
+            with counter_lock:
+                progress_counter["processed"] += 1
+                current_count = progress_counter["processed"]
                 
+                # Save progress every 10 classes
+                if current_count % 10 == 0:
+                    with save_lock:
+                        with open("class_domain_mapping.json", "w", encoding="utf-8") as f:
+                            json.dump(class_domain_mapping, f, ensure_ascii=False, indent=2)
+                        print(f"Progress saved ({current_count}/{total_classes})")
+            
+            return f"Classified {class_name} as '{domain}'"
+            
         except Exception as e:
-            print(f"Error processing {file_path}: {str(e)}")
-            # Add to mapping as error
-            class_domain_mapping[file_path] = "error"
+            error_msg = f"Error processing {file_path}: {str(e)}"
+            print(error_msg)
+            
+            # Thread-safe update to the mapping
+            with mapping_lock:
+                class_domain_mapping[class_name] = "error"
+            
+            # Update counter regardless of success/failure
+            with counter_lock:
+                progress_counter["processed"] += 1
+                
+            return error_msg
+    
+    # Process classes in parallel
+    print(f"Processing {total_classes} classes with 20 concurrent threads...")
+    
+    with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+        # Submit all tasks and collect futures
+        future_to_class = {executor.submit(process_class, item): item[0] for item in class_mapping.items()}
+        
+        # Process completed futures as they finish
+        for future in tqdm(concurrent.futures.as_completed(future_to_class), total=len(future_to_class)):
+            class_name = future_to_class[future]
+            try:
+                result = future.result()
+                # If you want to see individual results, uncomment the next line
+                # print(result)
+            except Exception as exc:
+                print(f"Processing of {class_name} generated an exception: {exc}")
     
     # Save final mapping
     with open("class_domain_mapping.json", "w", encoding="utf-8") as f:
