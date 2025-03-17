@@ -40,7 +40,7 @@ INSTRUCTIONS:
         prompt = prompt[:1048570]
     
     response = client.chat.completions.create(
-        model="o3-mini-high",
+        model="o3-mini",
         messages=[
             {"role": "system", "content": "You are an expert in Domain-Driven Design who can identify bounded contexts and business domains from application functionality descriptions."},
             {"role": "user", "content": prompt}
