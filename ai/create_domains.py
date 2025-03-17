@@ -18,11 +18,19 @@ CODE TO ANALYZE:
 IMPORTANT INSTRUCTIONS:
 Ensure that the output is a bulleted list of the functionalities and flows described in extreme detail, and nothing else. No titles or additional text."""
     
+    full_content = prompt + text + end_instructions
+    # Truncate content if it exceeds max length
+    if len(full_content) > 1048570:
+        # Calculate how much to keep to stay under the limit
+        keep_length = 1048570 - len(prompt) - len(end_instructions)
+        truncated_text = text[:keep_length]
+        full_content = prompt + truncated_text + end_instructions
+    
     response = client.chat.completions.create(
         model="o3-mini",
         messages=[
             {"role": "system", "content": "You are an expert software architect with a deep understanding of C# applications."},
-            {"role": "user", "content": prompt + text + end_instructions}
+            {"role": "user", "content": full_content}
         ],
         max_completion_tokens=5000
     )
@@ -56,6 +64,10 @@ INSTRUCTIONS:
    }
 6. Ensure one domain has the name "Common" containing all shared functionality.
 """
+    
+    # Truncate content if it exceeds max length
+    if len(prompt) > 1048570:
+        prompt = prompt[:1048570]
     
     response = client.chat.completions.create(
         model="o3-mini-high",
