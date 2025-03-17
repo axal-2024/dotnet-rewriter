@@ -258,6 +258,8 @@ INSTRUCTIONS:
                 ],
                 max_completion_tokens=100  # Short response needed
             )
+
+            print(response.choices[0])
             
             domain = response.choices[0].message.content.strip().lower()
             
