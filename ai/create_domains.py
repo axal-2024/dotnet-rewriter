@@ -61,7 +61,7 @@ def first_part(class_mapping_file):
     
     buffer = ""
     token_count = 0
-    MAX_TOKENS = 150000  # Reduced from 190000 to avoid overflows
+    MAX_TOKENS = 180000  # Reduced from 190000 to avoid overflows
     chunks = []
     
     for class_name, file_path in class_mapping.items():
@@ -71,6 +71,11 @@ def first_part(class_mapping_file):
                 
             file_tokens = count_tokens(file_content)
             
+            # Skip files that are too large
+            if file_tokens > MAX_TOKENS:
+                print(f"Skipping {file_path} as it is too large ({file_tokens} tokens)")
+                continue
+                
             # If adding this file would exceed the limit, create a new chunk
             if token_count + file_tokens > MAX_TOKENS and token_count > 0:
                 # Create prompt for this chunk
@@ -99,72 +104,10 @@ Ensure that the output is a bulleted list of the functionalities and flows descr
                 buffer = ""
                 token_count = 0
             
-            # If the single file itself is too large, split it
-            if file_tokens > MAX_TOKENS:
-                print(f"Warning: {file_path} is very large ({file_tokens} tokens), splitting into multiple chunks")
-                # Handle the current buffer first if it's not empty
-                if token_count > 0:
-                    prompt = """Analyze the following code and list out every single possible business functionality or application flow in as much detail as possible.
-
-CODE TO ANALYZE:    
-"""
-                    end_instructions = """
-
-IMPORTANT INSTRUCTIONS:
-Ensure that the output is a bulleted list of the functionalities and flows described in extreme detail, and nothing else. No titles or additional text."""
-                    
-                    full_content = prompt + buffer + end_instructions
-                    chunk_tokens = count_tokens(full_content)
-                    chunks.append(full_content)
-                    print(f"Chunk {len(chunks)} created with {chunk_tokens} tokens")
-                    buffer = ""
-                    token_count = 0
-                
-                # Now process the large file in pieces
-                parts = []
-                current_part = ""
-                current_tokens = 0
-                
-                for line in file_content.split('\n'):
-                    line_tokens = count_tokens(line + '\n')
-                    if current_tokens + line_tokens > MAX_TOKENS:
-                        parts.append(current_part)
-                        current_part = line + '\n'
-                        current_tokens = line_tokens
-                    else:
-                        current_part += line + '\n'
-                        current_tokens += line_tokens
-                
-                if current_part:
-                    parts.append(current_part)
-                
-                for part_idx, part in enumerate(parts):
-                    part_buffer = f"\n\n--- {class_name} ({file_path}) [Part {part_idx+1}/{len(parts)}] ---\n\n"
-                    part_buffer += part
-                    
-                    prompt = """Analyze the following code and list out every single possible business functionality or application flow in as much detail as possible.
-
-CODE TO ANALYZE:    
-"""
-                    end_instructions = """
-
-IMPORTANT INSTRUCTIONS:
-Ensure that the output is a bulleted list of the functionalities and flows described in extreme detail, and nothing else. No titles or additional text."""
-                    
-                    full_content = prompt + part_buffer + end_instructions
-                    if len(full_content) > 1048570:
-                        keep_length = 1048570 - len(prompt) - len(end_instructions)
-                        truncated_text = part_buffer[:keep_length]
-                        full_content = prompt + truncated_text + end_instructions
-                    
-                    chunk_tokens = count_tokens(full_content)
-                    chunks.append(full_content)
-                    print(f"Chunk {len(chunks)} (file part {part_idx+1}) created with {chunk_tokens} tokens")
-            else:
-                # Normal case - add file to the current buffer
-                buffer += f"\n\n--- {class_name} ({file_path}) ---\n\n"
-                buffer += file_content
-                token_count += file_tokens
+            # Normal case - add file to the current buffer
+            buffer += f"\n\n--- {class_name} ({file_path}) ---\n\n"
+            buffer += file_content
+            token_count += file_tokens
             
         except Exception as e:
             print(f"Error processing {file_path}: {str(e)}")
