@@ -245,9 +245,10 @@ CLASS CODE ({class_name} at {file_path}):
 {file_content}
 
 INSTRUCTIONS:
-1. Deeply analyze what this class does, its responsibilities, and its business purpose
-2. Determine which single domain it belongs to (only one domain allowed)
-3. Respond with ONLY the domain name (lowercase, exactly as listed above) and nothing else
+1. Focus ONLY on the class named '{class_name}' even if the file contains multiple classes
+2. Deeply analyze what this specific class does, its responsibilities, and its business purpose
+3. Determine which single domain it belongs to (only one domain allowed)
+4. Respond with ONLY the domain name (lowercase, exactly as listed above) and nothing else
 """
             
             response = client.chat.completions.create(
@@ -267,8 +268,8 @@ INSTRUCTIONS:
                 print(f"Warning: AI returned invalid domain '{domain}' for {class_name}. Defaulting to 'common'.")
                 domain = "common"
             
-            # Add to mapping
-            class_domain_mapping[file_path] = domain
+            # Add to mapping - use class_name instead of file_path as the key
+            class_domain_mapping[class_name] = domain
             print(f"Classified {class_name} as '{domain}'")
             
             # Save progress periodically
