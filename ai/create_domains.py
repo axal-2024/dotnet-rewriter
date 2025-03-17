@@ -1,6 +1,7 @@
 import argparse
 import json
 import tiktoken
+import os
 from openai import OpenAI
 from dotenv import load_dotenv
 
@@ -88,6 +89,10 @@ if __name__ == "__main__":
     summaries = []
     summary_count = 0
     
+    # Clear the summaries file at the start
+    with open("all_summaries.txt", "w", encoding="utf-8") as f:
+        pass
+    
     for class_name, file_path in class_mapping.items():
         try:
             with open(file_path, 'r') as f:
@@ -100,6 +105,10 @@ if __name__ == "__main__":
                 summaries.append(summary)
                 summary_count += 1
                 print(f"no. of summaries done = {summary_count}")
+                
+                # Save the summary immediately
+                with open("all_summaries.txt", "a", encoding="utf-8") as f:
+                    f.write(summary + "\n")
                 
                 buffer = ""
                 token_count = 0
@@ -116,12 +125,10 @@ if __name__ == "__main__":
         summaries.append(summary)
         summary_count += 1
         print(f"no. of summaries done = {summary_count}")
-    
-    # Save all summaries to a text file
-    if summaries:
-        with open("all_summaries.txt", "w", encoding="utf-8") as f:
-            for s in summaries:
-                f.write(s + "\n")
+        
+        # Save the final summary
+        with open("all_summaries.txt", "a", encoding="utf-8") as f:
+            f.write(summary + "\n")
     
     # Generate business domains from all summaries and save to a text file
     if summaries:
