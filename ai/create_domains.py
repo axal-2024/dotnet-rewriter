@@ -194,10 +194,10 @@ def third_part():
     business_domains_json = generate_business_domains(summaries)
     
     # Save the business domains to a file
-    with open("business_domains.txt", "w", encoding="utf-8") as f:
+    with open("business_domains.json", "w", encoding="utf-8") as f:
         f.write(business_domains_json)
     
-    print("Third part completed. Business domains saved to business_domains.txt")
+    print("Third part completed. Business domains saved to business_domains.json")
 
 if __name__ == "__main__":
     # Sample commands:
