@@ -117,8 +117,14 @@ if __name__ == "__main__":
         summary_count += 1
         print(f"no. of summaries done = {summary_count}")
     
-    # Generate business domains from all summaries
+    # Save all summaries to a text file
+    if summaries:
+        with open("all_summaries.txt", "w", encoding="utf-8") as f:
+            for s in summaries:
+                f.write(s + "\n")
+    
+    # Generate business domains from all summaries and save to a text file
     if summaries:
         business_domains_json = generate_business_domains(summaries)
-        print("\nBUSINESS DOMAINS:\n")
-        print(business_domains_json)
+        with open("business_domains.txt", "w", encoding="utf-8") as f:
+            f.write(business_domains_json)
