@@ -258,6 +258,7 @@ INSTRUCTIONS:
 2. Deeply analyze what this specific class does, its responsibilities, and its business purpose
 3. Determine which single domain it belongs to (only one domain allowed)
 4. Respond with ONLY the domain name (lowercase, exactly as listed above) and nothing else
+5. Assign to common ONLY when it is clear that it is a shared class that does not fit into any other specific domain
 """
             
             response = client.chat.completions.create(
