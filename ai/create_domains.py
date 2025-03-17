@@ -310,9 +310,65 @@ INSTRUCTIONS:
     # Process classes in parallel
     print(f"Processing {total_classes} classes with 20 concurrent threads...")
     
+    # Add retry logic for handling rate limit errors
+    def process_class_with_retry(item, max_retries=5):
+        class_name, file_path = item
+        retry_count = 0
+        backoff_time = 1  # Start with 1 second
+        
+        while retry_count <= max_retries:
+            try:
+                return process_class(item)
+            except Exception as e:
+                error_str = str(e)
+                # Check if this is a rate limit error
+                if "rate_limit_exceeded" in error_str and retry_count < max_retries:
+                    retry_count += 1
+                    # Calculate wait time with exponential backoff and some jitter
+                    import random
+                    jitter = random.uniform(0.1, 0.3)
+                    wait_time = backoff_time + jitter
+                    
+                    # Try to extract wait time from error message if available
+                    import re
+                    wait_match = re.search(r'try again in (\d+\.?\d*)([ms]+)', error_str)
+                    if wait_match:
+                        time_value = float(wait_match.group(1))
+                        time_unit = wait_match.group(2)
+                        if time_unit == 'ms':
+                            suggested_wait = time_value / 1000  # Convert ms to seconds
+                        else:
+                            suggested_wait = time_value
+                        # Always wait at least the suggested time plus some buffer
+                        wait_time = max(wait_time, suggested_wait * 1.5)
+                    
+                    print(f"Rate limit hit for {class_name}, retrying in {wait_time:.2f}s (attempt {retry_count}/{max_retries})")
+                    import time
+                    time.sleep(wait_time)
+                    
+                    # Increase backoff for next potential retry
+                    backoff_time = min(backoff_time * 2, 60)  # Cap at 60 seconds
+                else:
+                    # Not a rate limit error or we've exceeded retries
+                    raise
+        
+        # If we get here, we've exhausted retries
+        error_msg = f"Error processing {file_path} after {max_retries} retries: Rate limit exceeded"
+        print(error_msg)
+        
+        # Thread-safe update to the mapping
+        with mapping_lock:
+            class_domain_mapping[class_name] = "error_rate_limit"
+        
+        # Update counter
+        with counter_lock:
+            progress_counter["processed"] += 1
+            
+        return error_msg
+    
     with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
-        # Submit all tasks and collect futures
-        future_to_class = {executor.submit(process_class, item): item[0] for item in class_mapping.items()}
+        # Submit all tasks using the retry wrapper
+        future_to_class = {executor.submit(process_class_with_retry, item): item[0] for item in class_mapping.items()}
         
         # Process completed futures as they finish
         for future in tqdm(concurrent.futures.as_completed(future_to_class), total=len(future_to_class)):
