@@ -199,6 +199,94 @@ def third_part():
     
     print("Third part completed. Business domains saved to business_domains.json")
 
+def fourth_part(class_mapping_file):
+    print("Starting fourth part: Classifying classes into business domains...")
+    
+    # Load class mapping
+    with open(class_mapping_file, 'r') as f:
+        class_mapping = json.load(f)
+    
+    # Load business domains
+    with open("business_domains.json", 'r') as f:
+        domains_data = json.load(f)
+        domains = domains_data.get("domains", [])
+    
+    domain_names = [domain["name"] for domain in domains]
+    domain_descriptions = {domain["name"]: domain["description"] for domain in domains}
+    
+    print(f"Found {len(domain_names)} domains: {', '.join(domain_names)}")
+    
+    # Prepare domain descriptions for the prompt
+    domains_text = ""
+    for name, description in domain_descriptions.items():
+        domains_text += f"- {name}: {description}\n"
+    
+    # Create mapping between classes and domains
+    class_domain_mapping = {}
+    total_classes = len(class_mapping)
+    
+    for i, (class_name, file_path) in enumerate(class_mapping.items()):
+        print(f"Processing class {i+1}/{total_classes}: {class_name}")
+        
+        try:
+            with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
+                file_content = f.read()
+            
+            # Truncate content if it's too large
+            if len(file_content) > 900000:
+                file_content = file_content[:900000] + "\n[Content truncated due to length]"
+            
+            prompt = f"""Analyze the following class code and classify it into exactly ONE of the business domains defined below.
+
+BUSINESS DOMAINS:
+{domains_text}
+
+CLASS CODE ({class_name} at {file_path}):
+{file_content}
+
+INSTRUCTIONS:
+1. Deeply analyze what this class does, its responsibilities, and its business purpose
+2. Determine which single domain it belongs to (only one domain allowed)
+3. Respond with ONLY the domain name (lowercase, exactly as listed above) and nothing else
+"""
+            
+            response = client.chat.completions.create(
+                model="o3-mini",
+                messages=[
+                    {"role": "system", "content": "You are a domain-driven design expert that can accurately classify code into business domains based on its functionality."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=100  # Short response needed
+            )
+            
+            domain = response.choices[0].message.content.strip().lower()
+            
+            # Validate that the response is one of our domains
+            if domain not in domain_names:
+                print(f"Warning: AI returned invalid domain '{domain}' for {class_name}. Defaulting to 'common'.")
+                domain = "common"
+            
+            # Add to mapping
+            class_domain_mapping[file_path] = domain
+            print(f"Classified {class_name} as '{domain}'")
+            
+            # Save progress periodically
+            if (i + 1) % 10 == 0:
+                with open("class_domain_mapping.json", "w", encoding="utf-8") as f:
+                    json.dump(class_domain_mapping, f, ensure_ascii=False, indent=2)
+                print(f"Progress saved ({i+1}/{total_classes})")
+                
+        except Exception as e:
+            print(f"Error processing {file_path}: {str(e)}")
+            # Add to mapping as error
+            class_domain_mapping[file_path] = "error"
+    
+    # Save final mapping
+    with open("class_domain_mapping.json", "w", encoding="utf-8") as f:
+        json.dump(class_domain_mapping, f, ensure_ascii=False, indent=2)
+    
+    print("Fourth part completed. Class domain mapping saved to class_domain_mapping.json")
+
 if __name__ == "__main__":
     # Sample commands:
     # python create_domains.py class_mapping.json --part 1  # Accumulate code chunks
@@ -207,8 +295,8 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description="Process class mapping file and summarize code.")
     parser.add_argument("class_mapping_file", help="Path to the class mapping JSON file")
-    parser.add_argument("--part", type=int, choices=[1, 2, 3], default=1, 
-                        help="Which part to run: 1=accumulate chunks, 2=process with AI, 3=generate domains")
+    parser.add_argument("--part", type=int, choices=[1, 2, 3, 4], default=1, 
+                        help="Which part to run: 1=accumulate chunks, 2=process with AI, 3=generate domains, 4=classify classes")
     
     args = parser.parse_args()
     
@@ -218,3 +306,5 @@ if __name__ == "__main__":
         second_part()
     elif args.part == 3:
         third_part()
+    elif args.part == 4:
+        fourth_part(args.class_mapping_file)
