@@ -11,46 +11,49 @@ load_dotenv()
 client = OpenAI()
 
 def generate_business_domains(summaries):
-    prompt = """Analyze the following code functionality descriptions and identify logical domains in this codebase.
+    prompt = """Identify business domains from these code summaries. Format as JSON:
 
-CODE FUNCTIONALITY DESCRIPTIONS:
+CODE SUMMARIES:
 """
-    
-    for i, summary in enumerate(summaries):
+    for summary in summaries:
         prompt += f"\n{summary}\n"
-    
+
     prompt += """
-INSTRUCTIONS:
-1. Identify distinct, independent modules that represent logical domains of the codebase.
-2. Ensure that these domains are focused on end-user or business functionality and not technical structures.
-3. Create a single 'common' module for shared functionality and utilities used across multiple domains.
-4. Every domain other than common NEEDS to be loosely coupled and independent, following the principles of domain-driven design.
-5. For each domain, provide a concise description of its core responsibilities.
-6. Format your response as a valid JSON object with the following structure:
-   {
-     "domains": [
-       {
-         "name": "module_name",
-         "description": "Concise description of core responsibilities"
-       },
-       ...
-     ]
-   }
-7. Use only lowercase single words for module names. Ex. 'authentication', 'reporting', 'orders' etc. If necessary, use a maximum of 2 words with underscore separator.
-8. Be extremely specific and concise about each module's boundaries and responsibilities.
-"""
-    
-    # Truncate content if it exceeds max length
+RULES:
+1. Domains MUST:
+   - Represent distinct business capabilities (e.g. "order_management", "payment_processing")
+   - Use only business terminology from the summaries
+   - Be independently meaningful to business stakeholders
+
+2. Create ONE "common" domain ONLY for:
+   - Shared technical utilities (logging, data connectors)
+   - Non-business scaffolding reused across domains
+
+3. FORBIDDEN:
+   - Technical terms (e.g. "api", "database")
+   - Generic groupings (e.g. "utils", "helpers")
+   - Functional layers (e.g. "controllers", "services")
+
+4. Output JSON structure:
+{
+  "domains": [
+    {
+      "name": "lowercase_business_concept", 
+      "description": "Specific business capability in 8-12 words"
+    }
+  ]
+}"""
+
     if len(prompt) > 1048570:
         prompt = prompt[:1048570]
     
     response = client.chat.completions.create(
         model="o3-mini",
         messages=[
-            {"role": "system", "content": "You are an expert in software architecture who can identify logical domains and boundaries in any codebase."},
+            {"role": "system", "content": "You are a chief architect identifying business capabilities. Ruthlessly eliminate technical concerns."},
             {"role": "user", "content": prompt}
         ],
-        max_completion_tokens=4000
+        max_completion_tokens=2000
     )
     
     return response.choices[0].message.content
