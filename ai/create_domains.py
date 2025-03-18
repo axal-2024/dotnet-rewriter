@@ -34,7 +34,7 @@ RULES:
    - Generic groupings (e.g. "utils", "helpers")
    - Functional layers (e.g. "controllers", "services")
 
-4. Output JSON structure:
+4. Output JSON structure (to be followed EXACTLY):
 {
   "domains": [
     {
