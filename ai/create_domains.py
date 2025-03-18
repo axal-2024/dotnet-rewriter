@@ -43,6 +43,7 @@ RULES:
     }
   ]
 }"""
+    print(prompt)
 
     if len(prompt) > 1048570:
         prompt = prompt[:1048570]
@@ -50,10 +51,10 @@ RULES:
     response = client.chat.completions.create(
         model="o3-mini",
         messages=[
-            {"role": "system", "content": "You are a chief architect identifying business capabilities. Ruthlessly eliminate technical concerns."},
+            {"role": "system", "content": "You are an expert in software architecture who can identify logical domains and boundaries in any codebase."},
             {"role": "user", "content": prompt}
         ],
-        max_completion_tokens=2000
+        max_completion_tokens=4000
     )
     
     return response.choices[0].message.content
