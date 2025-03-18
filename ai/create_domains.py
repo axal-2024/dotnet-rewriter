@@ -25,7 +25,7 @@ RULES:
    - Use only business terminology from the summaries
    - Be independently meaningful to business stakeholders
 
-2. Create ONE "common" domain ONLY for:
+2. Create ONE 'common' domain ONLY for:
    - Shared technical utilities (logging, data connectors)
    - Non-business scaffolding reused across domains
 
@@ -42,7 +42,9 @@ RULES:
       "description": "Specific business capability in 8-12 words"
     }
   ]
-}"""
+}
+
+Now, generate the domains using the exact JSON format provided, and ENSURE that you include a 'common' domain."""
     print(prompt)
 
     if len(prompt) > 1048570:
@@ -51,7 +53,7 @@ RULES:
     response = client.chat.completions.create(
         model="o3-mini",
         messages=[
-            {"role": "system", "content": "You are an expert in software architecture who can identify logical domains and boundaries in any codebase."},
+            {"role": "system", "content": "You are an expert in software architecture, and you think through each decision very deeply and precisely."},
             {"role": "user", "content": prompt}
         ],
         max_completion_tokens=4000
@@ -277,7 +279,7 @@ INSTRUCTIONS:
             
             # Validate that the response is one of our domains
             if domain not in domain_names:
-                print(f"Warning: AI returned invalid domain '{domain}' for {class_name}. Defaulting to 'common'.")
+                print(f"Warning: AI returned invalid domain '{domain}' for {class_name}. Defaulting to 'unknown'.")
                 domain = "common"
             
             # Thread-safe update to the mapping
