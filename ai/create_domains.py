@@ -313,7 +313,7 @@ INSTRUCTIONS:
             
             # Thread-safe update to the mapping
             with mapping_lock:
-                class_domain_mapping[class_name] = "error"
+                class_domain_mapping[class_name] = "common"
             
             # Update counter regardless of success/failure
             with counter_lock:
@@ -372,7 +372,7 @@ INSTRUCTIONS:
         
         # Thread-safe update to the mapping
         with mapping_lock:
-            class_domain_mapping[class_name] = "error_rate_limit"
+            class_domain_mapping[class_name] = "common"
         
         # Update counter
         with counter_lock:
