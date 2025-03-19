@@ -11,7 +11,7 @@ load_dotenv()
 client = OpenAI()
 
 def generate_business_domains(summaries):
-    prompt = """Identify business domains from these code summaries. Format as JSON:
+    prompt = """Identify business domains from these code summaries. Format as JSON.
 
 CODE SUMMARIES:
 """
@@ -21,9 +21,10 @@ CODE SUMMARIES:
     prompt += """
 RULES:
 1. Domains MUST:
-   - Represent distinct business capabilities (e.g. "order_management", "payment_processing")
-   - Use only business terminology from the summaries
+   - Represent distinct business capabilities (e.g. "orders", "payments")
    - Be independently meaningful to business stakeholders
+   - Contain only lowercase letters and hyphens, and NO OTHER CHARACTERS
+   - Be a single word, and have up to 2 words if absolutely unavoidable
 
 2. Create ONE 'common' domain ONLY for:
    - Shared technical utilities (logging, data connectors)
@@ -38,14 +39,13 @@ RULES:
 {
   "domains": [
     {
-      "name": "lowercase_business_concept", 
+      "name": "lowercase-name", 
       "description": "Specific business capability in 8-12 words"
     }
   ]
 }
 
 Now, generate the domains using the exact JSON format provided, and ENSURE that you include a 'common' domain."""
-    print(prompt)
 
     if len(prompt) > 1048570:
         prompt = prompt[:1048570]
@@ -59,7 +59,14 @@ Now, generate the domains using the exact JSON format provided, and ENSURE that 
         max_completion_tokens=4000
     )
     
-    return response.choices[0].message.content
+    response_content = response.choices[0].message.content
+    try:
+        domains_json = json.loads(response_content)
+        for domain in domains_json["domains"]:
+            domain["name"] = domain["name"].lower().replace(" ", "-").replace("_", "-")
+        return json.dumps(domains_json)
+    except json.JSONDecodeError:
+        return response_content
 
 def count_tokens(text):
     encoding = tiktoken.encoding_for_model("o3-mini")
