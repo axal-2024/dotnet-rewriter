@@ -79,7 +79,7 @@ def first_part(class_mapping_file):
     
     buffer = ""
     token_count = 0
-    MAX_TOKENS = 180000  # Reduced from 190000 to avoid overflows
+    MAX_TOKENS = 180000
     chunks = []
     
     for class_name, file_path in class_mapping.items():
@@ -255,10 +255,10 @@ def fourth_part(class_mapping_file):
                 file_content = f.read()
             
             # Truncate content if it's too large
-            if len(file_content) > 900000:
-                file_content = file_content[:900000] + "\n[Content truncated due to length]"
+            if len(file_content) > 1048570:
+                file_content = file_content[:1048570]
             
-            prompt = f"""Analyze the following class code and classify it into exactly ONE of the business domains defined below.
+            prompt = f"""Analyze the following C# code and classify it into exactly ONE of the business domains defined below.
 
 BUSINESS DOMAINS:
 {domains_text}
