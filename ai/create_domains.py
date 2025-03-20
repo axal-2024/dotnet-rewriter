@@ -175,9 +175,7 @@ def second_part():
     for i, chunk in enumerate(chunks):
         print(f"Processing chunk {i+1}/{total_chunks}")
 
-        response = generate_gemini_response(chunk)
-        
-        summary = response.choices[0].message.content
+        summary = generate_gemini_response(chunk)
         
         with open("all_summaries.txt", "a", encoding="utf-8") as f:
             f.write(summary + "\n")
