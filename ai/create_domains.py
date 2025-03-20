@@ -51,8 +51,8 @@ RULES:
 
 Now, generate the domains using the exact JSON format provided, and ENSURE that you include a 'common' domain."""
 
-    if len(prompt) > 1048570:
-        prompt = prompt[:1048570]
+    if len(prompt) > 1000000:
+        prompt = prompt[:1000000]
     
     response = client.chat.completions.create(
         model="o3-mini",
@@ -77,15 +77,7 @@ def count_tokens(text):
     return len(encoding.encode(text))
 
 def count_gemini_tokens(input: str):
-
     return len(input)//4
-    
-    response = gemini_client.models.count_tokens(
-        model=GEMINI_MODEL_ID,
-        contents=input,
-    )
-
-    return response.total_tokens
 
 def generate_gemini_response(prompt):
     response = gemini_client.models.generate_content(
@@ -232,8 +224,8 @@ def fourth_part(class_mapping_file):
             with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
                 file_content = f.read()
             
-            if len(file_content) > 1048570:
-                file_content = file_content[:1048570]
+            if len(file_content) > 1000000:
+                file_content = file_content[:1000000]
             
             prompt = f"""Analyze the following C# code and determine the single most appropriate business domain for the specified class based on its primary responsibility.
 
