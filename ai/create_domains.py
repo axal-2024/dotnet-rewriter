@@ -142,15 +142,19 @@ Ensure that the output is a bulleted list of the functionalities and flows descr
             print(f"Error processing {file_path}: {str(e)}")
     
     if token_count > 0:
-        prompt = """Analyze the following code and list out every single possible business functionality or application flow in as much detail as possible.
+        prompt = """Extract all business capabilities, workflows, and domain concepts from this code.
 
-CODE TO ANALYZE:    
+        CODE:
 """
+
         end_instructions = """
 
-IMPORTANT INSTRUCTIONS:
-Ensure that the output is a bulleted list of the functionalities and flows described in extreme detail, and nothing else. No titles or additional text."""
-        
+        OUTPUT REQUIREMENTS:
+        - List ONLY concrete business operations and domain entities
+        - Focus on what the code DOES for the business, not how it works
+        - Identify cross-cutting concerns and shared business utilities
+        - Ignore technical implementation details"""
+
         full_content = prompt + buffer + end_instructions
         
         chunk_tokens = count_gemini_tokens(full_content)
@@ -241,7 +245,7 @@ def fourth_part(class_mapping_file):
             if len(file_content) > 1048570:
                 file_content = file_content[:1048570]
             
-            prompt = f"""Analyze the following C# code and classify it into exactly ONE of the business domains defined below.
+            prompt = f"""Analyze the following C# code and determine the single most appropriate business domain for the specified class based on its primary responsibility.
 
 BUSINESS DOMAINS:
 {domains_text}
@@ -252,9 +256,11 @@ CLASS CODE ({class_name} at {file_path}):
 INSTRUCTIONS:
 1. Focus ONLY on the class named '{class_name}' even if the file contains multiple classes
 2. Deeply analyze what this specific class does, its responsibilities, and its business purpose
-3. Determine which single domain it belongs to (only one domain allowed)
+3. Determine which single domain it belongs to (ONLY ONE domain allowed)
 4. Respond with ONLY the domain name (lowercase, exactly as listed above) and nothing else
-5. Assign to common ONLY when it is clear that it is a shared class that does not fit into any other specific domain
+5. Use 'common' ONLY for:
+- Classes used across multiple domains with equal importance
+- Infrastructure/utility code with no business-specific logic
 """
             
             response = client.chat.completions.create(
