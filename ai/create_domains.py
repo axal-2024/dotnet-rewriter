@@ -5,10 +5,15 @@ from openai import OpenAI
 from dotenv import load_dotenv
 import threading
 import concurrent.futures
-from tqdm import tqdm  # For a nice progress bar
+from tqdm import tqdm
+from google import genai
+import os
 
+GEMINI_MODEL_ID = "gemini-2.0-flash-thinking-exp-01-21"
 load_dotenv()
 client = OpenAI()
+
+gemini_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 def generate_business_domains(summaries):
     prompt = """Identify business domains from these code summaries. Format as JSON.
@@ -72,6 +77,23 @@ def count_tokens(text):
     encoding = tiktoken.encoding_for_model("o3-mini")
     return len(encoding.encode(text))
 
+def count_gemini_tokens(input: str):
+    
+    response = gemini_client.models.count_tokens(
+        model=GEMINI_MODEL_ID,
+        contents=input,
+    )
+
+    return response.total_tokens
+
+def generate_gemini_response(prompt):
+    response = gemini_client.models.generate_content(
+        model=GEMINI_MODEL_ID,
+        contents=prompt
+    )
+
+    return response.text
+
 def first_part(class_mapping_file):
     print("Starting first part: Accumulating code chunks...")
     with open(class_mapping_file, 'r') as f:
@@ -79,7 +101,7 @@ def first_part(class_mapping_file):
     
     buffer = ""
     token_count = 0
-    MAX_TOKENS = 180000
+    MAX_TOKENS = 900000
     chunks = []
     
     for class_name, file_path in class_mapping.items():
@@ -87,16 +109,13 @@ def first_part(class_mapping_file):
             with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
                 file_content = f.read()
                 
-            file_tokens = count_tokens(file_content)
+            file_tokens = count_gemini_tokens(file_content)
             
-            # Skip files that are too large
             if file_tokens > MAX_TOKENS:
                 print(f"Skipping {file_path} as it is too large ({file_tokens} tokens)")
                 continue
                 
-            # If adding this file would exceed the limit, create a new chunk
             if token_count + file_tokens > MAX_TOKENS and token_count > 0:
-                # Create prompt for this chunk
                 prompt = """Analyze the following code and list out every single possible business functionality or application flow in as much detail as possible.
 
 CODE TO ANALYZE:    
@@ -107,22 +126,14 @@ IMPORTANT INSTRUCTIONS:
 Ensure that the output is a bulleted list of the functionalities and flows described in extreme detail, and nothing else. No titles or additional text."""
                 
                 full_content = prompt + buffer + end_instructions
-                # Truncate content if it exceeds max length
-                if len(full_content) > 1048570:
-                    # Calculate how much to keep to stay under the limit
-                    keep_length = 1048570 - len(prompt) - len(end_instructions)
-                    truncated_text = buffer[:keep_length]
-                    full_content = prompt + truncated_text + end_instructions
                 
-                # Count tokens in the entire chunk for accurate reporting
-                chunk_tokens = count_tokens(full_content)
+                chunk_tokens = count_gemini_tokens(full_content)
                 chunks.append(full_content)
                 print(f"Chunk {len(chunks)} created with {chunk_tokens} tokens")
                 
                 buffer = ""
                 token_count = 0
             
-            # Normal case - add file to the current buffer
             buffer += f"\n\n--- {class_name} ({file_path}) ---\n\n"
             buffer += file_content
             token_count += file_tokens
@@ -131,7 +142,6 @@ Ensure that the output is a bulleted list of the functionalities and flows descr
             print(f"Error processing {file_path}: {str(e)}")
     
     if token_count > 0:
-        # Create prompt for the final chunk
         prompt = """Analyze the following code and list out every single possible business functionality or application flow in as much detail as possible.
 
 CODE TO ANALYZE:    
@@ -142,18 +152,11 @@ IMPORTANT INSTRUCTIONS:
 Ensure that the output is a bulleted list of the functionalities and flows described in extreme detail, and nothing else. No titles or additional text."""
         
         full_content = prompt + buffer + end_instructions
-        # Truncate content if it exceeds max length
-        if len(full_content) > 1048570:
-            # Calculate how much to keep to stay under the limit
-            keep_length = 1048570 - len(prompt) - len(end_instructions)
-            truncated_text = buffer[:keep_length]
-            full_content = prompt + truncated_text + end_instructions
         
-        chunk_tokens = count_tokens(full_content)
+        chunk_tokens = count_gemini_tokens(full_content)
         chunks.append(full_content)
         print(f"Final chunk {len(chunks)} created with {chunk_tokens} tokens")
     
-    # Save all chunks to a JSON file
     with open("code_chunks.json", "w", encoding="utf-8") as f:
         json.dump(chunks, f, ensure_ascii=False, indent=2)
     
@@ -162,11 +165,9 @@ Ensure that the output is a bulleted list of the functionalities and flows descr
 def second_part():
     print("Starting second part: Processing chunks with AI...")
     
-    # Clear the summaries file at the start
     with open("all_summaries.txt", "w", encoding="utf-8") as f:
         pass
     
-    # Load chunks from JSON file
     with open("code_chunks.json", "r", encoding="utf-8") as f:
         chunks = json.load(f)
     
@@ -174,19 +175,11 @@ def second_part():
     
     for i, chunk in enumerate(chunks):
         print(f"Processing chunk {i+1}/{total_chunks}")
-        
-        response = client.chat.completions.create(
-            model="o3-mini",
-            messages=[
-                {"role": "system", "content": "You are an expert software architect with a deep understanding of C# applications."},
-                {"role": "user", "content": chunk}
-            ],
-            max_completion_tokens=5000
-        )
+
+        response = generate_gemini_response(chunk)
         
         summary = response.choices[0].message.content
         
-        # Save the summary immediately
         with open("all_summaries.txt", "a", encoding="utf-8") as f:
             f.write(summary + "\n")
         
@@ -197,19 +190,15 @@ def second_part():
 def third_part():
     print("Starting third part: Generating business domains...")
     
-    # Read all summaries from the file
     with open("all_summaries.txt", "r", encoding="utf-8") as f:
         content = f.read()
         summaries = content.split("\n\n")
-        # Filter out empty summaries
         summaries = [s for s in summaries if s.strip()]
     
     print(f"Found {len(summaries)} summaries to process")
     
-    # Generate business domains from all summaries
     business_domains_json = generate_business_domains(summaries)
     
-    # Save the business domains to a file
     with open("business_domains.json", "w", encoding="utf-8") as f:
         f.write(business_domains_json)
     
@@ -218,11 +207,9 @@ def third_part():
 def fourth_part(class_mapping_file):
     print("Starting fourth part: Classifying classes into business domains...")
     
-    # Load class mapping
     with open(class_mapping_file, 'r') as f:
         class_mapping = json.load(f)
     
-    # Load business domains
     with open("business_domains.json", 'r') as f:
         domains_data = json.load(f)
         domains = domains_data.get("domains", [])
@@ -232,12 +219,10 @@ def fourth_part(class_mapping_file):
     
     print(f"Found {len(domain_names)} domains: {', '.join(domain_names)}")
     
-    # Prepare domain descriptions for the prompt
     domains_text = ""
     for name, description in domain_descriptions.items():
         domains_text += f"- {name}: {description}\n"
     
-    # Create mapping between classes and domains with thread safety
     class_domain_mapping = {}
     mapping_lock = threading.Lock()
     save_lock = threading.Lock()
@@ -246,7 +231,6 @@ def fourth_part(class_mapping_file):
     
     total_classes = len(class_mapping)
     
-    # Worker function for threaded processing
     def process_class(item):
         class_name, file_path = item
         
@@ -254,7 +238,6 @@ def fourth_part(class_mapping_file):
             with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
                 file_content = f.read()
             
-            # Truncate content if it's too large
             if len(file_content) > 1048570:
                 file_content = file_content[:1048570]
             
@@ -284,21 +267,17 @@ INSTRUCTIONS:
             
             domain = response.choices[0].message.content.strip().lower()
             
-            # Validate that the response is one of our domains
             if domain not in domain_names:
                 print(f"Warning: AI returned invalid domain '{domain}' for {class_name}. Defaulting to 'unknown'.")
                 domain = "common"
             
-            # Thread-safe update to the mapping
             with mapping_lock:
                 class_domain_mapping[class_name] = domain
             
-            # Update counter and save progress periodically
             with counter_lock:
                 progress_counter["processed"] += 1
                 current_count = progress_counter["processed"]
                 
-                # Save progress every 10 classes
                 if current_count % 10 == 0:
                     with save_lock:
                         with open("class_domain_mapping.json", "w", encoding="utf-8") as f:
@@ -311,101 +290,78 @@ INSTRUCTIONS:
             error_msg = f"Error processing {file_path}: {str(e)}"
             print(error_msg)
             
-            # Thread-safe update to the mapping
             with mapping_lock:
                 class_domain_mapping[class_name] = "common"
             
-            # Update counter regardless of success/failure
             with counter_lock:
                 progress_counter["processed"] += 1
                 
             return error_msg
     
-    # Process classes in parallel
     print(f"Processing {total_classes} classes with 20 concurrent threads...")
     
-    # Add retry logic for handling rate limit errors
     def process_class_with_retry(item, max_retries=5):
         class_name, file_path = item
         retry_count = 0
-        backoff_time = 1  # Start with 1 second
+        backoff_time = 1
         
         while retry_count <= max_retries:
             try:
                 return process_class(item)
             except Exception as e:
                 error_str = str(e)
-                # Check if this is a rate limit error
                 if "rate_limit_exceeded" in error_str and retry_count < max_retries:
                     retry_count += 1
-                    # Calculate wait time with exponential backoff and some jitter
                     import random
                     jitter = random.uniform(0.1, 0.3)
                     wait_time = backoff_time + jitter
                     
-                    # Try to extract wait time from error message if available
                     import re
                     wait_match = re.search(r'try again in (\d+\.?\d*)([ms]+)', error_str)
                     if wait_match:
                         time_value = float(wait_match.group(1))
                         time_unit = wait_match.group(2)
                         if time_unit == 'ms':
-                            suggested_wait = time_value / 1000  # Convert ms to seconds
+                            suggested_wait = time_value / 1000
                         else:
                             suggested_wait = time_value
-                        # Always wait at least the suggested time plus some buffer
                         wait_time = max(wait_time, suggested_wait * 1.5)
                     
                     print(f"Rate limit hit for {class_name}, retrying in {wait_time:.2f}s (attempt {retry_count}/{max_retries})")
                     import time
                     time.sleep(wait_time)
                     
-                    # Increase backoff for next potential retry
-                    backoff_time = min(backoff_time * 2, 60)  # Cap at 60 seconds
+                    backoff_time = min(backoff_time * 2, 60)
                 else:
-                    # Not a rate limit error or we've exceeded retries
                     raise
         
-        # If we get here, we've exhausted retries
         error_msg = f"Error processing {file_path} after {max_retries} retries: Rate limit exceeded"
         print(error_msg)
         
-        # Thread-safe update to the mapping
         with mapping_lock:
             class_domain_mapping[class_name] = "common"
         
-        # Update counter
         with counter_lock:
             progress_counter["processed"] += 1
             
         return error_msg
     
     with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
-        # Submit all tasks using the retry wrapper
         future_to_class = {executor.submit(process_class_with_retry, item): item[0] for item in class_mapping.items()}
         
-        # Process completed futures as they finish
         for future in tqdm(concurrent.futures.as_completed(future_to_class), total=len(future_to_class)):
             class_name = future_to_class[future]
             try:
                 result = future.result()
-                # If you want to see individual results, uncomment the next line
-                # print(result)
             except Exception as exc:
                 print(f"Processing of {class_name} generated an exception: {exc}")
     
-    # Save final mapping
     with open("class_domain_mapping.json", "w", encoding="utf-8") as f:
         json.dump(class_domain_mapping, f, ensure_ascii=False, indent=2)
     
     print("Fourth part completed. Class domain mapping saved to class_domain_mapping.json")
 
 if __name__ == "__main__":
-    # Sample commands:
-    # python create_domains.py class_mapping.json --part 1  # Accumulate code chunks
-    # python create_domains.py class_mapping.json --part 2  # Process chunks with AI
-    # python create_domains.py class_mapping.json --part 3  # Generate business domains
-    
     parser = argparse.ArgumentParser(description="Process class mapping file and summarize code.")
     parser.add_argument("class_mapping_file", help="Path to the class mapping JSON file")
     parser.add_argument("--part", type=int, choices=[1, 2, 3, 4], default=1, 
