@@ -78,6 +78,8 @@ def count_tokens(text):
     return len(encoding.encode(text))
 
 def count_gemini_tokens(input: str):
+
+    return len(input)//4
     
     response = gemini_client.models.count_tokens(
         model=GEMINI_MODEL_ID,
@@ -101,8 +103,21 @@ def first_part(class_mapping_file):
     
     buffer = ""
     token_count = 0
-    MAX_TOKENS = 900000
+    MAX_TOKENS = 800000
     chunks = []
+
+    PROMPT_TEMPLATE =   """Extract all business capabilities, workflows, and domain concepts from this code.
+
+CODE:    
+"""
+
+    END_INSTRUCTIONS_TEMPLATE = """
+
+        OUTPUT REQUIREMENTS:
+        - List ONLY concrete business operations and domain entities
+        - Focus on what the code DOES for the business, not how it works
+        - Identify cross-cutting concerns and shared business utilities
+        - Ignore technical implementation details"""
     
     for class_name, file_path in class_mapping.items():
         try:
@@ -116,16 +131,8 @@ def first_part(class_mapping_file):
                 continue
                 
             if token_count + file_tokens > MAX_TOKENS and token_count > 0:
-                prompt = """Analyze the following code and list out every single possible business functionality or application flow in as much detail as possible.
-
-CODE TO ANALYZE:    
-"""
-                end_instructions = """
-
-IMPORTANT INSTRUCTIONS:
-Ensure that the output is a bulleted list of the functionalities and flows described in extreme detail, and nothing else. No titles or additional text."""
                 
-                full_content = prompt + buffer + end_instructions
+                full_content = PROMPT_TEMPLATE + buffer + END_INSTRUCTIONS_TEMPLATE
                 
                 chunk_tokens = count_gemini_tokens(full_content)
                 chunks.append(full_content)
@@ -142,20 +149,8 @@ Ensure that the output is a bulleted list of the functionalities and flows descr
             print(f"Error processing {file_path}: {str(e)}")
     
     if token_count > 0:
-        prompt = """Extract all business capabilities, workflows, and domain concepts from this code.
-
-        CODE:
-"""
-
-        end_instructions = """
-
-        OUTPUT REQUIREMENTS:
-        - List ONLY concrete business operations and domain entities
-        - Focus on what the code DOES for the business, not how it works
-        - Identify cross-cutting concerns and shared business utilities
-        - Ignore technical implementation details"""
-
-        full_content = prompt + buffer + end_instructions
+        
+        full_content = PROMPT_TEMPLATE + buffer + END_INSTRUCTIONS_TEMPLATE
         
         chunk_tokens = count_gemini_tokens(full_content)
         chunks.append(full_content)
