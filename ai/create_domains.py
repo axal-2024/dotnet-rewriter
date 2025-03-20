@@ -15,13 +15,12 @@ client = OpenAI()
 
 gemini_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
-def generate_business_domains(summaries):
+def generate_business_domains(full_text):
     prompt = """Identify business domains from these code summaries. Format as JSON.
 
 CODE SUMMARIES:
 """
-    for summary in summaries:
-        prompt += f"\n{summary}\n"
+    prompt += f"\n{full_text}\n"
 
     prompt += """
 RULES:
@@ -186,15 +185,13 @@ def second_part():
 
 def third_part():
     print("Starting third part: Generating business domains...")
+
+    content = ""
     
     with open("all_summaries.txt", "r", encoding="utf-8") as f:
         content = f.read()
-        summaries = content.split("\n\n")
-        summaries = [s for s in summaries if s.strip()]
-    
-    print(f"Found {len(summaries)} summaries to process")
-    
-    business_domains_json = generate_business_domains(summaries)
+        
+    business_domains_json = generate_business_domains(content)
     
     with open("business_domains.json", "w", encoding="utf-8") as f:
         f.write(business_domains_json)
